@@ -1,0 +1,1 @@
+python pacman.py -l bigSearch -p ClosestDotSearchAgent -z .5 
