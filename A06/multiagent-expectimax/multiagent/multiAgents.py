@@ -368,12 +368,212 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
     def getAction(self, gameState):
         """
           Returns the expectimax action using self.depth and self.evaluationFunction
-
           All ghosts should be modeled as choosing uniformly at random from their
           legal moves.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        def maxAgent(state, depth):
+
+            if state.isWin() or state.isLose():
+                return state.getScore()
+
+            # max agent is always pacman
+            actions = state.getLegalActions(0)
+
+            bestScore = float("-inf")
+            score = bestScore
+            bestAction = Directions.STOP
+
+            goToDot = False
+
+            #print "getfood length " + str(len(state.getFood().asList()))
+
+            # the if-else makes the ghost not stop when it has only one dot remaining
+            # remove the if else to make the ghost not rush towards the dot, but its gonna stop before the last dot in some cases
+
+            # basic ghost bitch code
+            if len(state.getFood().asList()) == 1 and depth == 0:
+                from game import Actions
+                actionVectors = [Actions.directionToVector( a, 1 ) for a in actions]
+                pacmanPosition = state.getPacmanPosition()
+
+                #newPositions = [( pacmanPosition[0]+a[0], pacmanPosition[1]+a[1] ) if a != Directions.STOP for a in actionVectors ]
+                newPositions=[]
+                for a in actionVectors:
+                     if a != Directions.STOP and (pacmanPosition[0]+a[0], pacmanPosition[1]+a[1]) not in gameState.getWalls().asList():
+                         newPositions.append((pacmanPosition[0]+a[0], pacmanPosition[1]+a[1]))
+
+                # Select best actions given the state
+                distanceToDot = [manhattanDistance( pos, state.getFood().asList()[0] ) for pos in newPositions]
+                bestDotScore = min( distanceToDot )
+                bestActions = [action for action, distance in zip( actions, distanceToDot ) if distance == bestDotScore]
+                # set bestaction here
+                if(len(bestActions)==1 and bestActions[0]==Directions.STOP):
+                    print "into the if condiitons"
+                    for action in actions:
+                        score = minAgent(state.generateSuccessor(0, action), depth, 1)
+                        if score > bestScore:
+                            bestScore = score
+                            bestAction = action
+                else:
+                    bestAction = bestActions[0]
+
+                #print "bestactions: " +str(bestActions)
+                #print "bestAction at one dot: " +str(bestAction)
+
+            else:
+                for action in actions:
+                    score = minAgent(state.generateSuccessor(0, action), depth, 1)
+                    if score > bestScore:
+                        bestScore = score
+                        bestAction = action
+
+            if depth == 0:
+                return bestAction
+            else:
+                return bestScore
+
+
+        """
+        def maxAgent(state, depth):
+
+            if state.isWin() or state.isLose():
+                return state.getScore()
+
+            # max agent is always pacman
+            actions = state.getLegalActions(0)
+
+            bestScore = float("-inf")
+            score = bestScore
+            bestAction = Directions.STOP
+
+            goToDot = False
+
+            #print "getfood length " + str(len(state.getFood().asList()))
+
+            # basic bitch code
+            if len(state.getFood().asList()) == 1 and depth == 0:
+
+
+                from game import Actions
+                actionVectors = [Actions.directionToVector( a, 1 ) for a in actions]
+                pacmanPosition = state.getPacmanPosition()
+
+                #for i in range(1, state.getNumAgents()-1):
+                #    if(manhattanDistance(pacmanPosition, state.getGhostPosition(i)) <= 5):
+                #        goToDot=False
+
+                newPositions = [( pacmanPosition[0]+a[0], pacmanPosition[1]+a[1] ) for a in actionVectors]
+
+                # Select best actions given the state
+                distanceToDot = [manhattanDistance( pos, state.getFood().asList()[0] ) for pos in newPositions]
+                bestDotScore = min( distanceToDot )
+
+                if(bestDotScore>1):
+                    goToDot=False
+                else:
+                    bestActions = [action for action, distance in zip( actions, distanceToDot ) if distance == bestDotScore]
+
+                    # set bestaction here
+                    bestAction = bestActions[0]
+
+                    print "getfood length " + str(state.getFood().asList())
+
+                    goToDot=True
+
+            if goToDot==False:
+                #if (depth==0 and len(state.getFood().asList()) > 1) or (depth==1 and len(state.getFood().asList())>0):
+                for action in actions:
+                    score = minAgent(state.generateSuccessor(0, action), depth, 1)
+                    if score > bestScore:
+                        bestScore = score
+                        bestAction = action
+
+
+
+            if depth == 0:
+                return bestAction
+            else:
+                return bestScore
+        """
+
+
+        def minAgent(state, depth, currentGhost):
+
+            if state.isLose():
+                return state.getScore()
+
+            nextAgentNumber = currentGhost + 1
+            if currentGhost == state.getNumAgents() - 1:
+                nextAgentNumber = 0
+
+            actions = state.getLegalActions(currentGhost)
+            bestScore = float("inf")
+            score = bestScore
+
+            for action in actions:
+                prob = 1.0/len(actions)
+                # last ghost so its gonna be pacman's turn next
+                if nextAgentNumber == 0:
+                    if depth == self.depth - 1:
+                        score = self.evaluationFunction(state.generateSuccessor(currentGhost, action))
+                        score += prob * score
+                    else:
+                        score = maxAgent(state.generateSuccessor(currentGhost, action), depth + 1)
+                        score += prob * score
+                else:
+                    score = minAgent(state.generateSuccessor(currentGhost, action), depth, nextAgentNumber)
+                    score += prob * score
+
+            return score
+
+        return maxAgent(gameState, 0)
+
+
+        """
+        def expectimax(self, gameState, currentDepth, maxDepth):
+
+            # call it with a new state basically
+            # for every pacman action lets call the ghost actions one by one
+            currentScoreList = []
+            currentGhostScoreList = []
+
+            pacmanScoreList = []
+            pacmanMoveList = []
+
+            #if(currentDepth==maxDepth):
+            #    self.evaluationFunction(gameState)
+
+            pacmanLegalActions = gameState.getLegalActions(0)
+            #if(len(pacmanLegalActions)==1):
+            #    pacmanScoreList = [0]
+            #    pacmanMoveList = pacmanLegalActions[0]
+            #    return pacmanScoreList, pacmanMoveList
+            #else:
+            for pacmanAction in pacmanLegalActions:
+                newPacmanState = gameState.generateSuccessor(0, pacmanAction)
+                for i in range(1, gameState.getNumAgents()):
+                    ghostLegalActions = newPacmanState.getLegalActions(i)
+                    prob = 1.0/ghostLegalActions
+                    for ghostAction in ghostLegalActions:
+                        newGhostState = newPacmanState.generateSuccessor(i, ghostAction)
+                        if(currentDepth==maxDepth):
+                            currentGhostScoreList.append(self.evaluationFunction(gameState)*prob)
+                        else:
+                            currentGhostScoreList = self.expectimax(newGhostState, currentDepth + 1, maxDepth)[0]
+                    if(currentGhostScoreList):
+                        currentScoreList.append(min(currentGhostScoreList)*prob)
+                pacmanScoreList.append(sum(currentScoreList))
+                pacmanMoveList.append(pacmanAction)
+
+            #bestAction = pacmanMoveList[pacmanScoreList.index(max(pacmanScoreList))]
+            #return bestAction
+            #print "stuff"
+            #print "Pacman Score List: "+str(pacmanScoreList)
+            #print "Pacman Move List: "+str(pacmanMoveList)
+
+            return pacmanScoreList, pacmanMoveList
+        """
 
 def betterEvaluationFunction(currentGameState):
     """
@@ -383,7 +583,56 @@ def betterEvaluationFunction(currentGameState):
       DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    def closestDot(pos, foodPos):
+        foodDistance = []
+        for food in foodPos:
+            foodDistance.append(util.manhattanDistance(food, pos))
+
+        if len(foodDistance) > 0:
+            return min(foodDistance)
+        else:
+            return 1
+
+    def closestGhost(pos, ghosts):
+        ghostDistance = []
+        for ghost in ghosts:
+            ghostDistance.append(util.manhattanDistance(ghost.getPosition(), pos))
+
+        if len(ghostDistance) > 0:
+            return min(ghostDistance)
+        else:
+            return 1
+
+    def allFoodDots(pos, foodPositions):
+        foodDistance = []
+        for food in foodPositions:
+            foodDistance.append(util.manhattanDistance(food, pos))
+        return sum(foodDistance)
+
+    def allGhosts(pos, ghosts):
+        ghostDistance = []
+        for ghost in ghosts:
+            ghostDistance.append(util.manhattanDistance(ghost.getPosition(), pos))
+        return sum(ghostDistance)
+
+    def numFood(pos, food):
+        return len(food)
+
+    pacmanPos = currentGameState.getPacmanPosition()
+    score = currentGameState.getScore()
+    foodList = currentGameState.getFood().asList()
+    ghosts = currentGameState.getGhostStates()
+
+    #print "score before: " +str(score)
+    if closestDot(pacmanPos, foodList) < closestGhost(pacmanPos, ghosts)+3:
+        score = score * 2
+    #else:
+    #    score = score / 2
+    #print "score after: " +str(score)
+    score -= 0.7*allFoodDots(pacmanPos, foodList)
+    #score += allGhosts(pacmanPos, ghosts)
+
+    return score
 
 # Abbreviation
 better = betterEvaluationFunction
