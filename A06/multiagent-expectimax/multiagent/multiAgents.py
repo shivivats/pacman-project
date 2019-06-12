@@ -532,9 +532,18 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
 
         return maxAgent(gameState, 0)
 
+        """
+        directionsArray = []
+        directionsArray.append(Directions.NORTH)
+        directionsArray.append(Directions.WEST)
+        directionsArray.append(Directions.SOUTH)
+        directionsArray.append(Directions.EAST)
 
-
-
+        if(maxAgent(gameState, 0)==Directions.STOP):
+            return random.choice (directionsArray)
+        else:
+            return maxAgent(gameState, 0)
+        """
 
         """
         def expectimax(self, gameState, currentDepth, maxDepth):
@@ -589,7 +598,7 @@ def betterEvaluationFunction(currentGameState):
       DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    
+
     def closestDot(pos, foodPos):
         foodDistance = []
         for food in foodPos:
@@ -630,9 +639,10 @@ def betterEvaluationFunction(currentGameState):
             if util.manhattanDistance(ghost.getPosition(), pos) <= 5:
                 near=True
         return near
-
+    """
     def numFood(pos, food):
         return len(food)
+    """
 
     pacmanPos = currentGameState.getPacmanPosition()
     score = currentGameState.getScore()
@@ -667,7 +677,13 @@ def betterEvaluationFunction(currentGameState):
     if closestDot(pacmanPos, foodList)!=0:
         score += (maxDistanceFromGhost - closestDot(pacmanPos, foodList))
 
-
+    # decrease the score based on how far the dots are
+    if len(foodList)>5:
+        score -= 0.7*allFoodDots(pacmanPos, foodList)
+    else:
+        score += 0.5*closestDot(pacmanPos, foodList)
+    #score += allGhosts(pacmanPos, ghosts)
+    return score
 
     #print "score after food: " +str(score)
 
@@ -677,14 +693,6 @@ def betterEvaluationFunction(currentGameState):
     #    score = score / 2
     #print "score after ghost: " +str(score)
 
-    # decrease the score based on how far the dots are
-    if len(foodList)>5:
-        score -= 0.7*allFoodDots(pacmanPos, foodList)
-    #print str(score)
-    else:
-        score += 0.5*closestDot(pacmanPos, foodList)
-    #score += allGhosts(pacmanPos, ghosts)
-    return score
 
     #import random
     #return currentGameState.getScore() * random.randint(-500,500)
