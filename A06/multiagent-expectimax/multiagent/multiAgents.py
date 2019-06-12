@@ -16,6 +16,8 @@ from util import manhattanDistance
 from game import Directions
 import random, util
 
+import math
+
 from game import Agent
 
 class ReflexAgent(Agent):
@@ -404,9 +406,9 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
                          newPositions.append((pacmanPosition[0]+a[0], pacmanPosition[1]+a[1]))
 
                 # Select best actions given the state
-                distanceToDot = [manhattanDistance( pos, state.getFood().asList()[0] ) for pos in newPositions]
-                bestDotScore = min( distanceToDot )
-                bestActions = [action for action, distance in zip( actions, distanceToDot ) if distance == bestDotScore]
+                distancesToDot = [manhattanDistance( pos, state.getFood().asList()[0] ) for pos in newPositions]
+                bestDotScore = min( distancesToDot )
+                bestActions = [action for action, distance in zip( actions, distancesToDot ) if distance == bestDotScore]
                 # set bestaction here
                 if(len(bestActions)==1 and bestActions[0]==Directions.STOP):
                     print "into the if condiitons"
@@ -422,6 +424,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
                 #print "bestAction at one dot: " +str(bestAction)
 
             else:
+
                 for action in actions:
                     score = minAgent(state.generateSuccessor(0, action), depth, 1)
                     if score > bestScore:
@@ -530,6 +533,9 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         return maxAgent(gameState, 0)
 
 
+
+
+
         """
         def expectimax(self, gameState, currentDepth, maxDepth):
 
@@ -583,6 +589,7 @@ def betterEvaluationFunction(currentGameState):
       DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
+    
     def closestDot(pos, foodPos):
         foodDistance = []
         for food in foodPos:
@@ -595,13 +602,15 @@ def betterEvaluationFunction(currentGameState):
 
     def closestGhost(pos, ghosts):
         ghostDistance = []
+        closestGhost = 0
         for ghost in ghosts:
             ghostDistance.append(util.manhattanDistance(ghost.getPosition(), pos))
+            closestGhost=ghost
 
         if len(ghostDistance) > 0:
-            return min(ghostDistance)
+            return min(ghostDistance),closestGhost
         else:
-            return 1
+            return 1,closestGhost
 
     def allFoodDots(pos, foodPositions):
         foodDistance = []
@@ -615,6 +624,13 @@ def betterEvaluationFunction(currentGameState):
             ghostDistance.append(util.manhattanDistance(ghost.getPosition(), pos))
         return sum(ghostDistance)
 
+    def nearAGhost(pos, ghosts):
+        near = False
+        for ghost in ghosts:
+            if util.manhattanDistance(ghost.getPosition(), pos) <= 5:
+                near=True
+        return near
+
     def numFood(pos, food):
         return len(food)
 
@@ -623,16 +639,55 @@ def betterEvaluationFunction(currentGameState):
     foodList = currentGameState.getFood().asList()
     ghosts = currentGameState.getGhostStates()
 
+    #print str(currentGameState.getFood().height)
+
+    maxDistanceFromGhost = math.sqrt((currentGameState.getFood().height * currentGameState.getFood().height)+(currentGameState.getFood().width*currentGameState.getFood().width))
+
+    #print str(maxDistanceFromGhost)
+
+
     #print "score before: " +str(score)
-    if closestDot(pacmanPos, foodList) < closestGhost(pacmanPos, ghosts)+3:
-        score = score * 2
+    # if dot is closer than ghost, increase the score
+    #print "score before: " +str(score)
+    if closestDot(pacmanPos, foodList) < closestGhost(pacmanPos, ghosts)[0] + 3:
+        score = score * 5
+    else:
+        if len(foodList)>10:
+            score -= 0.7*allFoodDots(pacmanPos, foodList)
+        else:
+            score += 0.5*closestDot(pacmanPos, foodList)
+
+    if closestGhost(pacmanPos, ghosts)[0]<=4:
+        if closestGhost(pacmanPos, ghosts)[1] != 0:
+            if(not (closestGhost(pacmanPos, ghosts)[1].scaredTimer>1)):
+                score -= (maxDistanceFromGhost - closestGhost(pacmanPos, ghosts)[0]) * 10
+            else:
+                score += (maxDistanceFromGhost - closestGhost(pacmanPos, ghosts)[0]) * 5
+
+    if closestDot(pacmanPos, foodList)!=0:
+        score += (maxDistanceFromGhost - closestDot(pacmanPos, foodList))
+
+
+
+    #print "score after food: " +str(score)
+
+    #if nearAGhost(pacmanPos,ghosts):
+
     #else:
     #    score = score / 2
-    #print "score after: " +str(score)
-    score -= 0.7*allFoodDots(pacmanPos, foodList)
-    #score += allGhosts(pacmanPos, ghosts)
+    #print "score after ghost: " +str(score)
 
+    # decrease the score based on how far the dots are
+    if len(foodList)>5:
+        score -= 0.7*allFoodDots(pacmanPos, foodList)
+    #print str(score)
+    else:
+        score += 0.5*closestDot(pacmanPos, foodList)
+    #score += allGhosts(pacmanPos, ghosts)
     return score
+
+    #import random
+    #return currentGameState.getScore() * random.randint(-500,500)
 
 # Abbreviation
 better = betterEvaluationFunction
