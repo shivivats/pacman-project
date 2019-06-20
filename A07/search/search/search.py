@@ -300,6 +300,15 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     # https://en.wikipedia.org/wiki/A*_search_algorithm
     # command: python pacman.py -l bigMaze -z .5 -p SearchAgent -a fn=astar,heuristic=manhattanHeuristic
+
+
+    """
+
+    This assignment was solved together with groups Error 404 and Group 8, hence why we have the same solution.
+
+    """
+
+
     from util import PriorityQueue
     from game import Directions
 
@@ -361,7 +370,7 @@ def aStarUtil(thread, problem, top, priority_queue, visited_state, threadList, h
                         # Add the heuristic value in the priority cost.
                         priority_queue.push((succ, top[1] + [act], top[2] + co), top[2] + co + heuristic(succ, problem))
             #threadList.remove(thread)
-            
+
 
 
 # Abbreviations
