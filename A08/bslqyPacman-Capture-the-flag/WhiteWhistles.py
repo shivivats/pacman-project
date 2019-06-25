@@ -24,7 +24,7 @@ import random
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first = 'OffensiveReflexAgent', second = 'DefensiveReflexAgent'):
+               first = 'Lyza', second = 'Ozen'):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -47,10 +47,10 @@ def createTeam(firstIndex, secondIndex, isRed,
 # Agents #
 ##########
 
-bothDefenceMode = 1
-bothGhosts = 2
+global lyzaDefenseMode
+global ozenDefenseMode
 
-class OffensiveReflexAgent(CaptureAgent):
+class Lyza(CaptureAgent):
   """
   A Dummy agent to serve as an example of the necessary agent structure.
   You should look at baselineTeam.py for more details about how to
@@ -132,9 +132,14 @@ class OffensiveReflexAgent(CaptureAgent):
         centralBehindX = (gameState.data.layout.width - 2) / 2 -2
     else:
         centralBehindX = ((gameState.data.layout.width - 2) / 2) + 1 + 2
-    for i in range(gameState.data.layout.height/2, gameState.data.layout.height - 1):
+    for i in range(1, gameState.data.layout.height/2):
         if not gameState.hasWall(centralBehindX, i):
             self.superDefenseBoundary.append((centralBehindX, i))
+    self.bothGhosts = 2
+
+    print str(self.superDefenseBoundary)
+
+    self.superDefenseMode = True
 
 
   def chooseAction(self, gameState):
@@ -156,7 +161,7 @@ class OffensiveReflexAgent(CaptureAgent):
 
     ''' offensive agent initial stuff'''
     ourPacmans = [i for i in self.ownTeam if gameState.getAgentState(i).isPacman]
-    if self.getScore(gameState) > 6:
+    if self.getScore(gameState) > 3:
         self.haveAdvantage = True
     else:
         self.haveAdvantage = False
@@ -178,8 +183,22 @@ class OffensiveReflexAgent(CaptureAgent):
     if len(defendFood) <= 5:
         self.pacmanHuntDistance = 50
 
+    ''' common initial stuff '''
+    ourGhosts = [i for i in self.ownTeam if not gameState.getAgentState(i).isPacman]
+    self.bothGhosts = len(ourGhosts)
+
+    if self.powerPillUsed and gameState.getAgentState(self.index).scaredTimer > 10:
+        self.superDefenseMode=False
+
+    if (len(foods) <= 3 and self.getScore(gameState)>=0) or self.haveAdvantage:
+        self.superDefenseMode = True
+
+
+
     # if we have more than 3 food left and not advantage we attack
     if len(foods) > 4 and not self.haveAdvantage:
+
+        lyzaDefenseMode = False
 
         scaredTimes = [gameState.getAgentState(i).scaredTimer for i in self.opponent]
         opponentGhosts = [i for i in self.opponent if not gameState.getAgentState(i).isPacman]
@@ -263,7 +282,7 @@ class OffensiveReflexAgent(CaptureAgent):
 
         # go to home if you are carrying a lotta dots
         percentCarrying = float(gameState.getAgentState(self.index).numCarrying) / float(len(self.getFood(gameState).asList()))
-        if percentCarrying > 0.2 :
+        if percentCarrying >= 0.1 :
             minDis, action = self.getBestAction(gameState, nearestDoor, actions)
             #print(self.index, "g", "door", nearestDoor, minDis)
             return action
@@ -302,6 +321,10 @@ class OffensiveReflexAgent(CaptureAgent):
         #print "defensive mode for lyza"
 
         #  do something
+
+        lyzaDefenseMode = True
+
+        print "lyza defense mode"
 
         opponentPacmans = [i for i in self.opponent if gameState.getAgentState(i).isPacman]
         opponentConfig = [gameState.getAgentState(i).configuration for i in opponentPacmans]
@@ -442,17 +465,35 @@ class OffensiveReflexAgent(CaptureAgent):
                 minDis, action = self.getBestAction(gameState, self.lastKnownEnemyPacmanPosition, actions)
                 return action
             else:
-                minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+                if self.bothGhosts == 2 and self.superDefenseMode:
+                    print "super defense"
+                    minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+                else:
+                    #print "regular defense"
+                    #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
+                    minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
                 return action
         else:
             if self.wantToGoAfterPacmanInHuntMode and not self.lastKnownEnemyPacmanPosition[0] <= self.boundary[0][0]:
                 minDis, action = self.getBestAction(gameState, self.lastKnownEnemyPacmanPosition, actions)
                 return action
             else:
-                minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+                if self.bothGhosts == 2 and self.superDefenseMode:
+                    print "super defense"
+                    minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+                else:
+                    #print "regular defense"
+                    #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
+                    minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
                 return action
 
-        minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+        if self.bothGhosts == 2 and self.superDefenseMode:
+            print "super defense"
+            minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+        else:
+            #print "regular defense"
+            #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
+            minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
         return action
 
 
@@ -499,7 +540,7 @@ class OffensiveReflexAgent(CaptureAgent):
         return False
 
 
-class DefensiveReflexAgent(CaptureAgent):
+class Ozen(CaptureAgent):
   """
   A Dummy agent to serve as an example of the necessary agent structure.
   You should look at baselineTeam.py for more details about how to
@@ -588,6 +629,14 @@ class DefensiveReflexAgent(CaptureAgent):
         if not gameState.hasWall(centralBehindX, i):
             self.superDefenseBoundary.append((centralBehindX, i))
 
+    print str(self.superDefenseBoundary)
+    print str(gameState.data.layout.width)
+    print str(gameState.data.layout.height)
+    print str(gameState.hasWall(0, 0))
+    self.bothGhosts = 2
+    self.superDefenseMode=False
+
+
   def chooseAction(self, gameState):
     """
     Border patrol.
@@ -624,13 +673,21 @@ class DefensiveReflexAgent(CaptureAgent):
 
     ''' offensive agent initial stuff'''
     ourPacmans = [i for i in self.ownTeam if gameState.getAgentState(i).isPacman]
-    if self.getScore(gameState) > 6:
+    if self.getScore(gameState) > 3:
         self.haveAdvantage = True
     else:
         self.haveAdvantage = False
     # if the furthest food from this agent is not in the food list?, then get nearest food?
     if self.nearestFood not in foods:
         minDis, self.nearestFood = self.getNearestTarget(gameState, myPos, foods)
+
+    ''' common initial stuff '''
+    ourGhosts = [i for i in self.ownTeam if not gameState.getAgentState(i).isPacman]
+    self.bothGhosts = len(ourGhosts)
+
+
+    if len(foods) <= 3 or self.haveAdvantage:
+        self.superDefenseMode=True
 
     # if more than 2 foods
     if self.powerPillUsed and gameState.getAgentState(self.index).scaredTimer > 10:
@@ -639,6 +696,10 @@ class DefensiveReflexAgent(CaptureAgent):
         # go into agressive mode
 
         #print "offensive mode for ozen"
+
+        ozenDefenseMode = False
+
+        print "ozen offense mode"
 
         scaredTimes = [gameState.getAgentState(i).scaredTimer for i in self.opponent]
         opponentGhosts = [i for i in self.opponent if not gameState.getAgentState(i).isPacman]
@@ -722,7 +783,7 @@ class DefensiveReflexAgent(CaptureAgent):
 
         # go to home if you are carrying a lotta dots
         percentCarrying = float(gameState.getAgentState(self.index).numCarrying) / float(len(self.getFood(gameState).asList()))
-        if percentCarrying > 0.2 :
+        if percentCarrying >= 0.1 :
             minDis, action = self.getBestAction(gameState, nearestDoor, actions)
             #print(self.index, "g", "door", nearestDoor, minDis)
             return action
@@ -755,11 +816,14 @@ class DefensiveReflexAgent(CaptureAgent):
 
 
     # defensive code
+
     else:
 
         #  do something
 
-        self.amIDefending = True
+        ozenDefenseMode = True
+
+        #self.amIDefending = True
 
         opponentPacmans = [i for i in self.opponent if gameState.getAgentState(i).isPacman]
         opponentConfig = [gameState.getAgentState(i).configuration for i in opponentPacmans]
@@ -893,22 +957,43 @@ class DefensiveReflexAgent(CaptureAgent):
 
 
         # we want to try to go to last known pacman position if we lose track of the ghosts change for blue
+
+
+
         if self.red:
             if self.wantToGoAfterPacmanInHuntMode and not self.lastKnownEnemyPacmanPosition[0] >= self.boundary[0][0]:
                 minDis, action = self.getBestAction(gameState, self.lastKnownEnemyPacmanPosition, actions)
                 return action
             else:
-                minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+                if self.bothGhosts == 2 and self.superDefenseMode:
+                    print "super defense"
+                    minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+                else:
+                    #print "regular defense"
+                    #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
+                    minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
                 return action
         else:
             if self.wantToGoAfterPacmanInHuntMode and not self.lastKnownEnemyPacmanPosition[0] <= self.boundary[0][0]:
                 minDis, action = self.getBestAction(gameState, self.lastKnownEnemyPacmanPosition, actions)
                 return action
             else:
-                minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+                if self.bothGhosts == 2 and self.superDefenseMode:
+                    print "super defense"
+                    minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+                else:
+                    #print "regular defense"
+                    #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
+                    minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
                 return action
 
-        minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+        if self.bothGhosts == 2 and self.superDefenseMode:
+            print "super defense"
+            minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+        else:
+            #print "regular defense"
+            #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
+            minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
         return action
 
   ''' helper functions '''
