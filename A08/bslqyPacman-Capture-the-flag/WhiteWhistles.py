@@ -47,6 +47,9 @@ def createTeam(firstIndex, secondIndex, isRed,
 # Agents #
 ##########
 
+bothDefenceMode = 1
+bothGhosts = 2
+
 class OffensiveReflexAgent(CaptureAgent):
   """
   A Dummy agent to serve as an example of the necessary agent structure.
@@ -124,6 +127,14 @@ class OffensiveReflexAgent(CaptureAgent):
 
     ''' common agent stuff '''
     self.amIDefending = False
+    self.superDefenseBoundary = []
+    if self.red:
+        centralBehindX = (gameState.data.layout.width - 2) / 2 -2
+    else:
+        centralBehindX = ((gameState.data.layout.width - 2) / 2) + 1 + 2
+    for i in range(gameState.data.layout.height/2, gameState.data.layout.height - 1):
+        if not gameState.hasWall(centralBehindX, i):
+            self.superDefenseBoundary.append((centralBehindX, i))
 
 
   def chooseAction(self, gameState):
@@ -153,8 +164,19 @@ class OffensiveReflexAgent(CaptureAgent):
     if self.nearestFood not in foods:
         minDis, self.nearestFood = self.getNearestTarget(gameState, myPos, foods)
 
-    ''' defensive agent initial stuff '''
-
+    ''' defensive initial stuff '''
+    defendFood = self.getFoodYouAreDefending(gameState).asList()
+    minBoundaryDistance, self.nearestBoundary = self.getNearestTarget(gameState, myPos, self.boundary)
+    if self.nearestFood not in foods:
+        mindis, self.nearestFood = self.getNearestTarget(gameState, myPos, foods)
+    # ghost loses configuration hence he stops going after them so implement furthestTarget
+    # can also decrease the distance threshold to pacman for kill tomorrow
+    if self.powerPillCount == 0:
+        self.powerPillUsed = True
+    #print str(self.powerPillUsed) + "," + str(self.powerPillCount)
+    # if less than 2 foods, go into super hunt mode
+    if len(defendFood) <= 5:
+        self.pacmanHuntDistance = 50
 
     # if we have more than 3 food left and not advantage we attack
     if len(foods) > 4 and not self.haveAdvantage:
@@ -281,13 +303,12 @@ class OffensiveReflexAgent(CaptureAgent):
 
         #  do something
 
-        self.amIDefending = True
-
         opponentPacmans = [i for i in self.opponent if gameState.getAgentState(i).isPacman]
         opponentConfig = [gameState.getAgentState(i).configuration for i in opponentPacmans]
 
         #print "pacman config" +str(opponentConfig)
 
+        # if the opponent has 2 pacmans
         if len(opponentPacmans) == 2:
 
             opponent1 = opponentConfig[0]
@@ -409,6 +430,7 @@ class OffensiveReflexAgent(CaptureAgent):
                     currentOpponent = opponentGhost1
 
                 currentOpponentPos = currentOpponent.getPosition()
+
                 minDis, nearestDoor = self.getNearestTarget(gameState, currentOpponentPos, self.behindBoundary)
                 minDis, action = self.getBestAction(gameState, nearestDoor, actions)
                 return action
@@ -557,7 +579,14 @@ class DefensiveReflexAgent(CaptureAgent):
 
     ''' common agent stuff '''
     self.amIDefending = False
-
+    self.superDefenseBoundary = []
+    if self.red:
+        centralBehindX = (gameState.data.layout.width - 2) / 2 -2
+    else:
+        centralBehindX = ((gameState.data.layout.width - 2) / 2) + 1 + 2
+    for i in range(gameState.data.layout.height/2, gameState.data.layout.height - 1):
+        if not gameState.hasWall(centralBehindX, i):
+            self.superDefenseBoundary.append((centralBehindX, i))
 
   def chooseAction(self, gameState):
     """
