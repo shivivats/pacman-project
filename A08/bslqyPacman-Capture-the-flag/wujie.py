@@ -97,9 +97,16 @@ class OffensiveReflexAgent(CaptureAgent):
     else:
         self.partnerIndex = self.team[0]
 
+    self.initialTarget = None
+
+    self.ourOldPacmanCount = 1
+    self.ownTeam = self.getTeam(gameState)
+
+
+
   def chooseAction(self, gameState):
     """
-    Picks among actions randomly.
+    Semi-greedy agent.
     """
     x, y = gameState.getAgentState(self.index).getPosition()
     myPos = (int(x), int(y))
@@ -115,159 +122,146 @@ class OffensiveReflexAgent(CaptureAgent):
 
     partnerPos = gameState.getAgentState(self.partnerIndex).getPosition()
 
+    ourPacmans = [i for i in self.ownTeam if gameState.getAgentState(i).isPacman]
 
+    # if the furthest food from this agent is not in the food list?, then get nearest food?
     if self.nearestFood not in foods:
-        mindis, self.nearestFood = self.getNearestTarget(gameState, myPos, foods)
+        minDis, self.nearestFood = self.getNearestTarget(gameState, myPos, foods)
 
     if len(foods) > 2:
 
         scaredTimes = [gameState.getAgentState(i).scaredTimer for i in self.opponent]
-
         opponentGhosts = [i for i in self.opponent if not gameState.getAgentState(i).isPacman]
         opponentConfig = [gameState.getAgentState(i).configuration for i in opponentGhosts]
 
+        #
         if len(opponentGhosts) == 2:
             #print("2")
             opponent1 = opponentConfig[0]
             opponent2 = opponentConfig[1]
-            if opponent1 is not None and opponent2 is not None and (scaredTimes[0] <= 5 or scaredTimes[1] <= 5):
 
+            # if we detect both opponents and their scared timers are less than 5
+            if opponent1 is not None and opponent2 is not None:
                 opponent1Pos = opponent1.getPosition()
                 opponent2Pos = opponent2.getPosition()
 
+                # if we have 2 ghosts and there is pill, then go for pill
                 if len(capsules) > 0:
-
                     distToCap, nearestCapsule = self.getNearestTarget(gameState, myPos, capsules)
-
                     if distToCap < self.getMazeDistance(opponent1Pos, nearestCapsule) & distToCap < self.getMazeDistance(opponent2Pos, nearestCapsule):
                         minDis, action = self.getBestAction(gameState, nearestCapsule, actions)
                         #print(self.index, "a", "cap", nearestCapsule, minDis)
                         return action
-                if self.getMazeDistance(myPos, opponent1Pos) <= 5 or self.getMazeDistance(myPos, opponent1Pos) <= 5:
-
-                    if gameState.getAgentState(self.index).isPacman:
-                        minDis, nearestDoor = self.getNearestTarget(gameState, myPos, self.boundary)
-                        minDis, action = self.getBestAction(gameState, nearestDoor, actions)
-                        #print(self.index, "c", "door", nearestDoor, minDis)
-                        return action
 
 
-                    else:
-                        if self.isAtDoor(gameState) and self.randFoodStatus == 0:
-                            if len(self.getFoodYouAreDefending(gameState).asList()) > 0:
-                                self.randFood = random.choice(self.getFoodYouAreDefending(gameState).asList())
-                            minDis, action = self.getBestAction(gameState, self.randFood, actions)
-                            self.randFoodStatus = 6
-                            #print(self.index, "b", "randfood", self.randFood, minDis)
-                            return action
+                # if we're within 3 distance of any ghost, we run to the boundary
+                if self.getMazeDistance(myPos, opponent1Pos) <= 3 or self.getMazeDistance(myPos, opponent2Pos) <= 3:
+                    minDis, nearestDoor = self.getNearestTarget(gameState, myPos, self.boundary)
+                    minDis, action = self.getBestAction(gameState, nearestDoor, actions)
+                    #print(self.index, "c", "door", nearestDoor, minDis)
+                    return action
 
-                        if self.getMazeDistance(myPos, partnerPos) <= 10:
-                            if self.index == self.team[0]:
-                                minDis, nearestFood = self.getNearestTarget(gameState, myPos, foods)
-                                minDis, action = self.getBestAction(gameState, nearestFood, actions)
-                                #print(self.index, "z", "suiside", nearestFood, minDis)
-                                return action
-                        if self.randFoodStatus == 0:
-                            if len(self.getFoodYouAreDefending(gameState).asList()) > 0:
-                                self.randFood = random.choice(self.getFoodYouAreDefending(gameState).asList())
-                            minDis, action = self.getBestAction(gameState, self.randFood, actions)
-                            self.randFoodStatus = 6
-                            #print(self.index, "b-2", "randfood", self.randFood, minDis)
-                            return action
+            # if we only detect one opponent we only try to avoid that one
+            #elif opponent1 is not None or opponent2 is not None and (scaredTimes[0] <= 5 or scaredTimes[1] <= 5):
+
+
+        #
         elif len(opponentGhosts) == 1:
             #print("1")
             opponent = opponentConfig[0]
-            if opponent is not None and gameState.getAgentState(opponentGhosts[0]).scaredTimer <= 5:
 
+            if opponent is not None:
                 opponentPos = opponent.getPosition()
 
+                # if we have capsule and enemy ghost is not closer to capsule
                 if len(capsules) > 0:
-
                     distToCap, nearestCapsule = self.getNearestTarget(gameState, myPos, capsules)
-
                     if distToCap < self.getMazeDistance(opponentPos, nearestCapsule):
                         minDis, action = self.getBestAction(gameState, nearestCapsule, actions)
                         #print(self.index, "a", "cap", nearestCapsule, minDis)
                         return action
 
-                if self.getMazeDistance(myPos, opponentPos) <= 5:
+                # run towards the boundary
+                if self.getMazeDistance(myPos, opponentPos) <= 3:
+                    minDis, nearestDoor = self.getNearestTarget(gameState, myPos, self.boundary)
+                    minDis, action = self.getBestAction(gameState, nearestDoor, actions)
+                    #print(self.index, "c-2", "door", nearestDoor, minDis)
+                    return action
+                    # no else cause we dont care if we're not pacman right now
 
-                    if gameState.getAgentState(self.index).isPacman:
-
-                        minDis, nearestDoor = self.getNearestTarget(gameState, myPos, self.boundary)
+        else:
+            if self.red:
+                if gameState.getAgentState(self.index).getPosition()[0] > self.boundary[0][0]: # change this to work with blue as well
+                    # check if you have dots
+                    # if you do, run back
+                    if gameState.getAgentState(self.index).numCarrying > 0:
                         minDis, action = self.getBestAction(gameState, nearestDoor, actions)
-                        #print(self.index, "c-2", "door", nearestDoor, minDis)
+                        #print(self.index, "g", "door", nearestDoor, minDis)
                         return action
-                    else:
-                        if self.getMazeDistance(myPos, partnerPos) <= 10:
-                            if self.index == self.team[0]:
-                                minDis, nearestFood = self.getNearestTarget(gameState, myPos, foods)
-                                minDis, action = self.getBestAction(gameState, nearestFood, actions)
-                                #print(self.index, "z-2", "suiside", nearestFood, minDis)
-                                return action
+            else:
+                if gameState.getAgentState(self.index).getPosition()[0] < self.boundary[0][0]: # change this to work with blue as well
+                    # check if you have dots
+                    # if you do, run back
+                    if gameState.getAgentState(self.index).numCarrying > 0:
+                        minDis, action = self.getBestAction(gameState, nearestDoor, actions)
+                        #print(self.index, "g", "door", nearestDoor, minDis)
+                        return action
 
-                        if self.isAtDoor(gameState) and self.randFoodStatus == 0:
-                            if len(self.getFoodYouAreDefending(gameState).asList()) > 0:
-                                self.randFood = random.choice(self.getFoodYouAreDefending(gameState).asList())
-                            minDis, action = self.getBestAction(gameState, self.randFood, actions)
-                            self.randFoodStatus = 6
-                            #print(self.index, "b-1", "randfood", self.randFood, minDis)
-                            return action
-
-                        if self.randFoodStatus == 0:
-                            if len(self.getFoodYouAreDefending(gameState).asList()) > 0:
-                                self.randFood = random.choice(self.getFoodYouAreDefending(gameState).asList())
-                            minDis, action = self.getBestAction(gameState, self.randFood, actions)
-                            self.randFoodStatus = 6
-                            #print(self.index, "b-2", "randfood", self.randFood, minDis)
-                            return action
-
-        if self.randFoodStatus > 0:
-            minDis, action = self.getBestAction(gameState, self.randFood, actions)
-            self.randFoodStatus -= 1
-            #print(self.index, "countdown", self.randFood, minDis, self.randFoodStatus)
-            return action
-
-        partnerMinDisttoFood, partnerNearestFood = self.getNearestTarget(gameState, partnerPos, foods)
-        myMinDisttoFood, myNearestFood = self.getNearestTarget(gameState, myPos, foods)
+        # idle code, when no opponents are found
         minDisttoHome, nearestDoor = self.getNearestTarget(gameState, myPos, self.boundary)
 
-        if gameState.getAgentState(self.index).numCarrying > minDisttoHome:
+        # go to home if you are carrying a lotta dots
+        percentCarrying = float(gameState.getAgentState(self.index).numCarrying) / float(len(self.getFood(gameState).asList()))
+        if percentCarrying > 0.2 :
             minDis, action = self.getBestAction(gameState, nearestDoor, actions)
             #print(self.index, "g", "door", nearestDoor, minDis)
             return action
 
-        if myNearestFood == partnerNearestFood:
 
-            if myMinDisttoFood < partnerMinDisttoFood:
-                self.nearestFood = myNearestFood
-            elif myMinDisttoFood == partnerMinDisttoFood:
-                if self.index == self.team[0]:
-                    if self.getMazeDistance(myPos, self.nearestFood) <= myMinDisttoFood:
-                        self.nearestFood = self.getFurthestTarget(gameState, myPos, foods)
-                else:
-                    self.nearestFood = myNearestFood
+        myMinDisttoFood, myNearestFood = self.getNearestTarget(gameState, myPos, foods)
+        myMinDisttoSecondFood, mySecondNearestFood = self.getSecondNearestTarget(gameState, myPos, foods)
+        self.nearestFood = myNearestFood
+
+        #no need to change for blue bc not used
+        #if self.initialTarget is None and gameState.getAgentState(self.index).getPosition()[0] < self.boundary[0][0]:
+        if len(ourPacmans) < self.ourOldPacmanCount:
+            self.initialTarget = random.choice(foods)
+
+        self.ourOldPacmanCount = len(ourPacmans)
+
+        print "initial target " +str(self.initialTarget)
+
+        if self.initialTarget is not None:
+            if gameState.getAgentState(self.index).getPosition() == self.initialTarget:
+                # and we update initialtarget
+                self.initialTarget = None
             else:
-                if self.nearestFood == myNearestFood:
-                    self.nearestFood = self.getFurthestTarget(gameState, myPos, foods)
-        else:
-            self.nearestFood = myNearestFood
+                minDis, action = self.getBestAction(gameState, self.initialTarget, actions)
+                return action
 
         minDis, action = self.getBestAction(gameState, self.nearestFood, actions)
         #print(self.index, "h", "food", self.nearestFood, minDis)
         return action
 
+    # if we have 2 or less foods remaining
     else:
         minDis, nearestDoor = self.getNearestTarget(gameState, myPos, self.boundary)
         minDis, action = self.getBestAction(gameState, nearestDoor, actions)
         #print(self.index, "i", "door", nearestDoor, minDis)
         return action
 
-
+  '''
+    Helper Functionss
+  '''
   def getNearestTarget(self, gameState, pos, targets):
     minDis, nearestTarget = min([(self.getMazeDistance(pos, target), target) for target in targets])
     return (minDis, nearestTarget)
 
+  def getSecondNearestTarget(self, gameState, pos, targets):
+    minDis, nearestTarget = min([(self.getMazeDistance(pos, target), target) for target in targets])
+    targets.remove(nearestTarget)
+    minDis, secondNearestTarget = min([(self.getMazeDistance(pos, target), target) for target in targets])
+    return (minDis, secondNearestTarget)
 
   def getFurthestTarget(self, gameState, pos, targets):
     maxDisttoTarget, furthestTarget = max([(self.getMazeDistance(pos, target), target) for target in targets])
@@ -396,7 +390,6 @@ class DefensiveReflexAgent(CaptureAgent):
 
     # ghost loses configuration hence he stops going after them so implement furthestTarget
     # can also decrease the distance threshold to pacman for kill tomorrow
-    #
 
     # if less than 2 foods, go into super hunt mode
     if len(defendFood) <= 5:
@@ -548,13 +541,21 @@ class DefensiveReflexAgent(CaptureAgent):
 
 
 
-    # we want to try to go to last known pacman position if we lose track of the ghosts
-    if self.wantToGoAfterPacmanInHuntMode and not self.lastKnownEnemyPacmanPosition[0] >= self.boundary[0][0]:
-        minDis, action = self.getBestAction(gameState, self.lastKnownEnemyPacmanPosition, actions)
-        return action
+    # we want to try to go to last known pacman position if we lose track of the ghosts change for blue
+    if self.red:
+        if self.wantToGoAfterPacmanInHuntMode and not self.lastKnownEnemyPacmanPosition[0] >= self.boundary[0][0]:
+            minDis, action = self.getBestAction(gameState, self.lastKnownEnemyPacmanPosition, actions)
+            return action
+        else:
+            minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+            return action
     else:
-        minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
-        return action
+        if self.wantToGoAfterPacmanInHuntMode and not self.lastKnownEnemyPacmanPosition[0] <= self.boundary[0][0]:
+            minDis, action = self.getBestAction(gameState, self.lastKnownEnemyPacmanPosition, actions)
+            return action
+        else:
+            minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+            return action
 
     minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
     return action
