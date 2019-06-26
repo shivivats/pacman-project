@@ -82,6 +82,8 @@ class Lyza(CaptureAgent):
     '''
     #self.start = gameState.getAgentPosition(self.index)
 
+    self.sys_random = random.SystemRandom()
+
     if self.red:
         centralX = (gameState.data.layout.width - 2) / 2
     else:
@@ -94,7 +96,7 @@ class Lyza(CaptureAgent):
     self.team = self.getTeam(gameState)
     self.opponent = self.getOpponents(gameState)
     self.randFoodStatus = 0
-    self.randFood = random.choice(self.getFoodYouAreDefending(gameState).asList())
+    self.randFood = self.sys_random.choice(self.getFoodYouAreDefending(gameState).asList())
     if self.index == self.team[0]:
         self.partnerIndex = self.team[1]
     else:
@@ -112,15 +114,23 @@ class Lyza(CaptureAgent):
     self.currentBoundaryIndex=0
     self.behindBoundary = []
     if self.red:
-        centralBehindX = (gameState.data.layout.width - 2) / 2 -2
+        centralBehindX = (gameState.data.layout.width - 2) / 2 - 3
     else:
-        centralBehindX = ((gameState.data.layout.width - 2) / 2) + 1 + 2
+        centralBehindX = ((gameState.data.layout.width - 2) / 2) + 1 + 3
     for i in range(1, gameState.data.layout.height - 1):
         if not gameState.hasWall(centralBehindX, i):
             self.behindBoundary.append((centralBehindX, i))
-
+    if len(self.behindBoundary) < 6: # if we have less than 6 places to defend
+        self.behindBoundary = []
+        if self.red:
+            centralBehindX = (gameState.data.layout.width - 2) / 2 - 2
+        else:
+            centralBehindX = ((gameState.data.layout.width - 2) / 2) + 1 + 2
+        for i in range(1, gameState.data.layout.height - 1):
+            if not gameState.hasWall(centralBehindX, i):
+                self.behindBoundary.append((centralBehindX, i))
     self.pacmanHuntDistance = 6
-    self.lastKnownEnemyPacmanPosition = random.choice(self.behindBoundary)
+    self.lastKnownEnemyPacmanPosition = self.sys_random.choice(self.behindBoundary)
     self.wantToGoAfterPacmanInHuntMode = False
     self.lastNumberOfPacman = 0
     self.powerPillCount = 1
@@ -146,6 +156,9 @@ class Lyza(CaptureAgent):
     """
     Semi-greedy agent.
     """
+
+    self.sys_random = random.SystemRandom()
+
     x, y = gameState.getAgentState(self.index).getPosition()
     myPos = (int(x), int(y))
     actions = gameState.getLegalActions(self.index)
@@ -190,19 +203,28 @@ class Lyza(CaptureAgent):
     if self.powerPillUsed and gameState.getAgentState(self.index).scaredTimer > 10:
         self.superDefenseMode=False
 
-    if (len(foods) <= 3 and self.getScore(gameState)>=0) or self.haveAdvantage:
+    if (len(defendFood) <= 3 and self.getScore(gameState)>=0) or self.haveAdvantage:
         self.superDefenseMode = True
 
+    #no need to change for blue cause not used
+    #if self.initialTarget is None and gameState.getAgentState(self.index).getPosition()[0] < self.boundary[0][0]:
+    if len(ourPacmans) < self.ourOldPacmanCount:
+        self.initialTarget = self.sys_random.choice(foods)
+    print "len " + str(len(ourPacmans)) + " oldpacman "+ str(self.ourOldPacmanCount)
+    self.ourOldPacmanCount = len(ourPacmans)
+    print "initial target " +str(self.initialTarget)
 
 
     # if we have more than 3 food left and not advantage we attack
-    if len(foods) > 4 and not self.haveAdvantage:
+    if len(defendFood) > 4 and not self.haveAdvantage:
 
         lyzaDefenseMode = False
 
         scaredTimes = [gameState.getAgentState(i).scaredTimer for i in self.opponent]
         opponentGhosts = [i for i in self.opponent if not gameState.getAgentState(i).isPacman]
         opponentConfig = [gameState.getAgentState(i).configuration for i in opponentGhosts]
+
+
 
         #
         if len(opponentGhosts) == 2:
@@ -292,18 +314,9 @@ class Lyza(CaptureAgent):
         myMinDisttoSecondFood, mySecondNearestFood = self.getSecondNearestTarget(gameState, myPos, foods)
         self.nearestFood = myNearestFood
 
-        #no need to change for blue bc not used
-        #if self.initialTarget is None and gameState.getAgentState(self.index).getPosition()[0] < self.boundary[0][0]:
-        if len(ourPacmans) < self.ourOldPacmanCount:
-            self.initialTarget = random.choice(foods)
-
-        self.ourOldPacmanCount = len(ourPacmans)
-
-        #print "initial target " +str(self.initialTarget)
-
         if self.initialTarget is not None:
             if gameState.getAgentState(self.index).getPosition() == self.initialTarget:
-                # and we update initialtarget
+                # we update initialtarget
                 self.initialTarget = None
             else:
                 minDis, action = self.getBestAction(gameState, self.initialTarget, actions)
@@ -467,11 +480,11 @@ class Lyza(CaptureAgent):
             else:
                 if self.bothGhosts == 2 and self.superDefenseMode:
                     print "super defense"
-                    minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+                    minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.superDefenseBoundary), actions)
                 else:
                     #print "regular defense"
                     #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
-                    minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+                    minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.behindBoundary), actions)
                 return action
         else:
             if self.wantToGoAfterPacmanInHuntMode and not self.lastKnownEnemyPacmanPosition[0] <= self.boundary[0][0]:
@@ -480,20 +493,20 @@ class Lyza(CaptureAgent):
             else:
                 if self.bothGhosts == 2 and self.superDefenseMode:
                     print "super defense"
-                    minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+                    minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.superDefenseBoundary), actions)
                 else:
                     #print "regular defense"
                     #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
-                    minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+                    minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.behindBoundary), actions)
                 return action
 
         if self.bothGhosts == 2 and self.superDefenseMode:
             print "super defense"
-            minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+            minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.superDefenseBoundary), actions)
         else:
             #print "regular defense"
             #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
-            minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+            minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.behindBoundary), actions)
         return action
 
 
@@ -574,6 +587,8 @@ class Ozen(CaptureAgent):
     '''
     #self.start = gameState.getAgentPosition(self.index)
 
+    self.sys_random = random.SystemRandom()
+
     if self.red:
         centralX = (gameState.data.layout.width - 2) / 2
     else:
@@ -588,7 +603,7 @@ class Ozen(CaptureAgent):
 
     #print "opponents" + str(self.opponent)
     self.randFoodStatus = 0
-    self.randFood = random.choice(self.getFoodYouAreDefending(gameState).asList())
+    self.randFood = self.sys_random.choice(self.getFoodYouAreDefending(gameState).asList())
     if self.index == self.team[0]:
         self.partnerIndex = self.team[1]
     else:
@@ -600,14 +615,23 @@ class Ozen(CaptureAgent):
     self.currentBoundaryIndex=0
     self.behindBoundary = []
     if self.red:
-        centralBehindX = (gameState.data.layout.width - 2) / 2 -2
+        centralBehindX = (gameState.data.layout.width - 2) / 2 - 3
     else:
-        centralBehindX = ((gameState.data.layout.width - 2) / 2) + 1 + 2
+        centralBehindX = ((gameState.data.layout.width - 2) / 2) + 1 + 3
     for i in range(1, gameState.data.layout.height - 1):
         if not gameState.hasWall(centralBehindX, i):
             self.behindBoundary.append((centralBehindX, i))
+    if len(self.behindBoundary) < 6: # if we have less than 6 places to defend
+        self.behindBoundary = []
+        if self.red:
+            centralBehindX = (gameState.data.layout.width - 2) / 2 - 2
+        else:
+            centralBehindX = ((gameState.data.layout.width - 2) / 2) + 1 + 2
+        for i in range(1, gameState.data.layout.height - 1):
+            if not gameState.hasWall(centralBehindX, i):
+                self.behindBoundary.append((centralBehindX, i))
     self.pacmanHuntDistance = 6
-    self.lastKnownEnemyPacmanPosition = random.choice(self.behindBoundary)
+    self.lastKnownEnemyPacmanPosition = self.sys_random.choice(self.behindBoundary)
     self.wantToGoAfterPacmanInHuntMode = False
     self.lastNumberOfPacman = 0
     self.powerPillCount = 1
@@ -641,6 +665,9 @@ class Ozen(CaptureAgent):
     """
     Border patrol.
     """
+
+    self.sys_random = random.SystemRandom()
+
     x, y = gameState.getAgentState(self.index).getPosition()
     myPos = (int(x), int(y))
     actions = gameState.getLegalActions(self.index)
@@ -686,7 +713,7 @@ class Ozen(CaptureAgent):
     self.bothGhosts = len(ourGhosts)
 
 
-    if len(foods) <= 3 or self.haveAdvantage:
+    if len(defendFood) <= 3 or self.haveAdvantage:
         self.superDefenseMode=True
 
     # if more than 2 foods
@@ -796,11 +823,11 @@ class Ozen(CaptureAgent):
         #no need to change for blue bc not used
         #if self.initialTarget is None and gameState.getAgentState(self.index).getPosition()[0] < self.boundary[0][0]:
         if len(ourPacmans) < self.ourOldPacmanCount:
-            self.initialTarget = random.choice(foods)
+            self.initialTarget = self.sys_random.choice(foods)
 
         self.ourOldPacmanCount = len(ourPacmans)
 
-        #print "initial target " +str(self.initialTarget)
+        print "initial target " +str(self.initialTarget)
 
         if self.initialTarget is not None:
             if gameState.getAgentState(self.index).getPosition() == self.initialTarget:
@@ -958,8 +985,6 @@ class Ozen(CaptureAgent):
 
         # we want to try to go to last known pacman position if we lose track of the ghosts change for blue
 
-
-
         if self.red:
             if self.wantToGoAfterPacmanInHuntMode and not self.lastKnownEnemyPacmanPosition[0] >= self.boundary[0][0]:
                 minDis, action = self.getBestAction(gameState, self.lastKnownEnemyPacmanPosition, actions)
@@ -967,11 +992,11 @@ class Ozen(CaptureAgent):
             else:
                 if self.bothGhosts == 2 and self.superDefenseMode:
                     print "super defense"
-                    minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+                    minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.superDefenseBoundary), actions)
                 else:
                     #print "regular defense"
                     #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
-                    minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+                    minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.behindBoundary), actions)
                 return action
         else:
             if self.wantToGoAfterPacmanInHuntMode and not self.lastKnownEnemyPacmanPosition[0] <= self.boundary[0][0]:
@@ -980,20 +1005,20 @@ class Ozen(CaptureAgent):
             else:
                 if self.bothGhosts == 2 and self.superDefenseMode:
                     print "super defense"
-                    minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+                    minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.superDefenseBoundary), actions)
                 else:
                     #print "regular defense"
                     #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
-                    minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+                    minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.behindBoundary), actions)
                 return action
 
         if self.bothGhosts == 2 and self.superDefenseMode:
             print "super defense"
-            minDis, action = self.getBestAction(gameState, random.choice(self.superDefenseBoundary), actions)
+            minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.superDefenseBoundary), actions)
         else:
             #print "regular defense"
             #print "lyzadef "+str(lyzaDefenseMode) + "ozendef "+str(ozenDefenseMode) + "bothghosts "+str(self.bothGhosts)
-            minDis, action = self.getBestAction(gameState, random.choice(self.behindBoundary), actions)
+            minDis, action = self.getBestAction(gameState, self.sys_random.choice(self.behindBoundary), actions)
         return action
 
   ''' helper functions '''
@@ -1032,6 +1057,8 @@ class Ozen(CaptureAgent):
     #print("best action", minDis, action)
     #print([(self.getMazeDistance(self.getSuccessor(gameState, action), targetPos), action) for action in actions])
     return (minDis, bestAction)
+
+
 
   # returns if at the door in between sides
   def isAtDoor(self, gameState):
